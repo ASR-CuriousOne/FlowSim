@@ -1,0 +1,15 @@
+*.out
+*.exe
+*.spv
+
+.cache
+build
+bin
+lib
+compile_commands.json
+
+assets
+
+.env
+
+
