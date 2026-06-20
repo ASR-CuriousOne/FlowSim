@@ -13,7 +13,7 @@ file(GLOB_RECURSE ENGINE_SOURCES
 add_library(GhostRenderEngine STATIC ${ENGINE_SOURCES})
 
 target_include_directories(GhostRenderEngine PUBLIC
-	"./include")
+	"./include/")
 
 target_precompile_headers(GhostRenderEngine PRIVATE <vulkan/vulkan.hpp>)
 target_precompile_headers(GhostRenderEngine PRIVATE <vulkan/vulkan_raii.hpp>)

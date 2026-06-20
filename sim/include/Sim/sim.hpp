@@ -15,13 +15,13 @@ class Sim {
 
   protected:
     void onInit();
-    void onUpdate();
+    void onUpdate(float deltaTime);
     void onRender(Ghost::FrameInfo &frameInfo);
     void onShutdown();
 
     WindowGLFW m_window;
 
-    std::unique_ptr<Ghost::ForwardRenderer> m_engine;
+    std::unique_ptr<Ghost::ForwardRenderer> m_forwardRenderer;
     std::unique_ptr<Ghost::GhostDescriptorManager> m_descriptorManager;
 
   private:
