@@ -10,17 +10,24 @@ class TextureBase {
     TextureBase(const TextureBase &) = delete;
     TextureBase &operator=(const TextureBase &) = delete;
 
+    const vk::raii::Image &getImage() const { return m_ghostImage->getImage(); }
+
     const vk::raii::ImageView &getImageView() const {
         return m_ghostImage->getImageView();
     }
     const vk::raii::Sampler &getSampler() const { return m_sampler; }
-    vk::ImageLayout getImageLayout() const {
+    virtual vk::ImageLayout getImageLayout() const {
         return vk::ImageLayout::eShaderReadOnlyOptimal;
     }
 
-    vk::DescriptorImageInfo descriptorInfo() {
+    virtual vk::DescriptorImageInfo descriptorInfo() {
         return vk::DescriptorImageInfo(m_sampler, m_ghostImage->getImageView(),
                                        vk::ImageLayout::eShaderReadOnlyOptimal);
+    }
+
+    void transitionLayout(vk::raii::CommandBuffer &cmd,
+                          vk::ImageLayout newLayout) {
+        m_ghostImage->transitionImageLayout(cmd, newLayout);
     }
 
   protected:
@@ -29,7 +36,7 @@ class TextureBase {
     VulkanDevice &m_device;
     std::unique_ptr<GhostImage> m_ghostImage;
     vk::raii::Sampler m_sampler = nullptr;
-	uint32_t m_mipLevels = 1;
+    uint32_t m_mipLevels = 1;
 
     void createTextureImage(const void *pixels, vk::DeviceSize imageSize,
                             uint32_t width, uint32_t height, vk::Format format);

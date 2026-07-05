@@ -1,0 +1,48 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D u_Velocity;
+layout(binding = 1, rgba32f) uniform readonly image2D u_Source;
+layout(binding = 2, rgba32f) uniform writeonly image2D u_Target;
+
+layout(push_constant) uniform PushConstants {
+    float dt;
+    float dissipation;
+    float alpha;
+    float beta;
+    vec2 point;
+    vec3 color;
+    float radius; 
+} push;
+vec4 bilerp(vec2 p) {
+    ivec2 size = imageSize(u_Source);
+    vec2 st = p - 0.5;
+    ivec2 ij = ivec2(floor(st));
+    vec2 f = fract(st);
+
+    ivec2 tlCoord = clamp(ij, ivec2(0), size - 1);
+    ivec2 trCoord = clamp(ij + ivec2(1, 0), ivec2(0), size - 1);
+    ivec2 blCoord = clamp(ij + ivec2(0, 1), ivec2(0), size - 1);
+    ivec2 brCoord = clamp(ij + ivec2(1, 1), ivec2(0), size - 1);
+
+    vec4 tl = imageLoad(u_Source, tlCoord);
+    vec4 tr = imageLoad(u_Source, trCoord);
+    vec4 bl = imageLoad(u_Source, blCoord);
+    vec4 br = imageLoad(u_Source, brCoord);
+
+    return mix(mix(tl, tr, f.x), mix(bl, br, f.x), f.y);
+}
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    if (coord.x >= imageSize(u_Target).x || coord.y >= imageSize(u_Target).y) return;
+
+    vec2 vel = imageLoad(u_Velocity, coord).xy * 10;
+    
+    vec2 pos = vec2(coord) + vec2(0.5) - vel * push.dt;
+	vec4 result = bilerp(pos);
+    float decayRate = push.dissipation; 
+	result *= pow(decayRate, push.dt * 60.0); 
+    imageStore(u_Target, coord, result);
+}

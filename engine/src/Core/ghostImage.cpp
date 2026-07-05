@@ -92,6 +92,14 @@ void GhostImage::transitionImageLayout(vk::raii::CommandBuffer &cmd,
 
         sourceStage = vk::PipelineStageFlagBits::eTransfer;
         destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    } else if (m_imageLayout == vk::ImageLayout::eUndefined &&
+               newLayout == vk::ImageLayout::eGeneral) {
+        barrier.srcAccessMask = vk::AccessFlagBits::eNone;
+        barrier.dstAccessMask =
+            vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite;
+
+        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        destinationStage = vk::PipelineStageFlagBits::eComputeShader;
     } else {
         throw std::invalid_argument(
             "GhostImage: Unsupported layout transition requested!");
@@ -103,7 +111,8 @@ void GhostImage::transitionImageLayout(vk::raii::CommandBuffer &cmd,
     m_imageLayout = newLayout;
 }
 
-void GhostImage::generateMipmaps(vk::raii::CommandBuffer &cmd, uint32_t width, uint32_t height) {
+void GhostImage::generateMipmaps(vk::raii::CommandBuffer &cmd, uint32_t width,
+                                 uint32_t height) {
     vk::ImageMemoryBarrier barrier{};
     barrier.setImage(m_image);
     barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
@@ -136,16 +145,16 @@ void GhostImage::generateMipmaps(vk::raii::CommandBuffer &cmd, uint32_t width, u
         blit.srcSubresource.layerCount = m_arrayLayers;
 
         blit.dstOffsets[0] = vk::Offset3D{0, 0, 0};
-        blit.dstOffsets[1] = vk::Offset3D{mipWidth > 1 ? mipWidth / 2 : 1, 
+        blit.dstOffsets[1] = vk::Offset3D{mipWidth > 1 ? mipWidth / 2 : 1,
                                           mipHeight > 1 ? mipHeight / 2 : 1, 1};
         blit.dstSubresource.aspectMask = m_aspectFlags;
         blit.dstSubresource.mipLevel = i;
         blit.dstSubresource.baseArrayLayer = 0;
         blit.dstSubresource.layerCount = m_arrayLayers;
 
-        cmd.blitImage(*m_image, vk::ImageLayout::eTransferSrcOptimal,
-                      *m_image, vk::ImageLayout::eTransferDstOptimal,
-                      blit, vk::Filter::eLinear);
+        cmd.blitImage(*m_image, vk::ImageLayout::eTransferSrcOptimal, *m_image,
+                      vk::ImageLayout::eTransferDstOptimal, blit,
+                      vk::Filter::eLinear);
 
         barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
         barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -156,8 +165,10 @@ void GhostImage::generateMipmaps(vk::raii::CommandBuffer &cmd, uint32_t width, u
                             vk::PipelineStageFlagBits::eFragmentShader,
                             vk::DependencyFlags(), nullptr, nullptr, barrier);
 
-        if (mipWidth > 1) mipWidth /= 2;
-        if (mipHeight > 1) mipHeight /= 2;
+        if (mipWidth > 1)
+            mipWidth /= 2;
+        if (mipHeight > 1)
+            mipHeight /= 2;
     }
 
     barrier.subresourceRange.baseMipLevel = m_mipLevels - 1;

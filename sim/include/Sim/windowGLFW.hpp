@@ -4,8 +4,8 @@
 struct WindowGLFW {
     GLFWwindow *m_window;
 
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+    const uint32_t WIDTH = 1024;
+    const uint32_t HEIGHT = 1024;
 
     bool m_framebufferResized = false;
 

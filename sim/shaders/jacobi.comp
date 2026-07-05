@@ -1,0 +1,34 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D u_Pressure;
+layout(binding = 1, rgba32f) uniform readonly image2D u_Divergence;
+layout(binding = 2, rgba32f) uniform writeonly image2D u_Target;
+
+layout(push_constant) uniform PushConstants {
+    float dt;
+    float dissipation;
+    float alpha;
+    float beta;
+    vec2 point;
+    vec3 color;
+    float radius; 
+} push;
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(u_Pressure);
+    if (coord.x >= size.x || coord.y >= size.y) return;
+
+    float pL = coord.x > 0 ? imageLoad(u_Pressure, coord - ivec2(1, 0)).x : imageLoad(u_Pressure, coord).x;
+    float pR = coord.x < size.x - 1 ? imageLoad(u_Pressure, coord + ivec2(1, 0)).x : imageLoad(u_Pressure, coord).x;
+    float pB = coord.y > 0 ? imageLoad(u_Pressure, coord - ivec2(0, 1)).x : imageLoad(u_Pressure, coord).x;
+    float pT = coord.y < size.y - 1 ? imageLoad(u_Pressure, coord + ivec2(0, 1)).x : imageLoad(u_Pressure, coord).x;
+
+    float div = imageLoad(u_Divergence, coord).x;
+
+    float pNew = (pL + pR + pB + pT + push.alpha * div) / push.beta;
+    
+    imageStore(u_Target, coord, vec4(pNew, 0.0, 0.0, 1.0));
+}

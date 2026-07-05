@@ -1,0 +1,20 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D u_Velocity;
+layout(binding = 1, rgba32f) uniform writeonly image2D u_Divergence;
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(u_Velocity);
+    if (coord.x >= size.x || coord.y >= size.y) return;
+
+    float vL = coord.x > 0 ? imageLoad(u_Velocity, coord - ivec2(1, 0)).x : -imageLoad(u_Velocity, coord).x;
+    float vR = coord.x < size.x - 1 ? imageLoad(u_Velocity, coord + ivec2(1, 0)).x : -imageLoad(u_Velocity, coord).x;
+    float vB = coord.y > 0 ? imageLoad(u_Velocity, coord - ivec2(0, 1)).y : -imageLoad(u_Velocity, coord).y;
+    float vT = coord.y < size.y - 1 ? imageLoad(u_Velocity, coord + ivec2(0, 1)).y : -imageLoad(u_Velocity, coord).y;
+
+    float div = 0.5 * ((vR - vL) + (vT - vB));
+    imageStore(u_Divergence, coord, vec4(div, 0.0, 0.0, 1.0));
+}

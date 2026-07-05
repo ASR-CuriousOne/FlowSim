@@ -1,0 +1,32 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D u_TargetRead;
+layout(binding = 1, rgba32f) uniform writeonly image2D u_TargetWrite;
+
+layout(push_constant) uniform PushConstants {
+    float dt;
+    float dissipation;
+    float alpha;
+    float beta;
+    vec2 point;
+    vec3 color;
+    float radius; 
+} push;
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    vec2 size = vec2(imageSize(u_TargetWrite));
+    if (coord.x >= size.x || coord.y >= size.y) return;
+
+    vec2 uv = (vec2(coord) + 0.5) / size;
+    
+    vec2 diff = uv - push.point;
+    diff.x *= size.x / size.y; 
+    
+    float falloff = exp(-dot(diff, diff) / push.radius);
+    vec4 existing = imageLoad(u_TargetRead, coord);
+    vec4 splat = vec4(push.color * falloff, 0.0);
+    
+    imageStore(u_TargetWrite, coord, existing + splat);
+}

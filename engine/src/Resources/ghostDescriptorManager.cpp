@@ -5,9 +5,10 @@ GhostDescriptorManager::GhostDescriptorManager(VulkanDevice &device)
     : m_device(device) {
     m_globalPool =
         GhostDescriptorPool::Builder(m_device)
-            .setMaxSets(1000)
+            .setMaxSets(2000)
             .addPoolSize(vk::DescriptorType::eUniformBuffer, 1000)
             .addPoolSize(vk::DescriptorType::eCombinedImageSampler, 1000)
+			.addPoolSize(vk::DescriptorType::eStorageImage, 1000)
             .setPoolFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
             .build();
 }

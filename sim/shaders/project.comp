@@ -1,0 +1,24 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) uniform readonly image2D u_Velocity;
+layout(binding = 1, rgba32f) uniform readonly image2D u_Pressure;
+layout(binding = 2, rgba32f) uniform writeonly image2D u_Target;
+
+void main() {
+    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(u_Velocity);
+    if (coord.x >= size.x || coord.y >= size.y) return;
+
+    float pL = coord.x > 0 ? imageLoad(u_Pressure, coord - ivec2(1, 0)).x : imageLoad(u_Pressure, coord).x;
+    float pR = coord.x < size.x - 1 ? imageLoad(u_Pressure, coord + ivec2(1, 0)).x : imageLoad(u_Pressure, coord).x;
+    float pB = coord.y > 0 ? imageLoad(u_Pressure, coord - ivec2(0, 1)).x : imageLoad(u_Pressure, coord).x;
+    float pT = coord.y < size.y - 1 ? imageLoad(u_Pressure, coord + ivec2(0, 1)).x : imageLoad(u_Pressure, coord).x;
+
+    vec2 vel = imageLoad(u_Velocity, coord).xy;
+    vel.x -= 0.5 * (pR - pL);
+    vel.y -= 0.5 * (pT - pB);
+
+    imageStore(u_Target, coord, vec4(vel, 0.0, 1.0));
+}
