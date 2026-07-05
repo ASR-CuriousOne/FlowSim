@@ -1,3 +1,10 @@
 ## Flow Sim
-<img width="918" height="970" alt="image" src="https://github.com/user-attachments/assets/deea8d62-3084-4bbb-a796-92289bec955c" />
 
+[Rendering Engine(GhostRender)](https://github.com/ASR-CuriousOne/GhostRender)
+
+[Old Sim](https://github.com/CSESA-IITI/Fluid-Simulation)
+
+<img src="readmeStuff/simWithoutFPS.png" alt="Sim" width="900">
+
+
+<img src="readmeStuff/sim.png" alt="Sim" width="900" >

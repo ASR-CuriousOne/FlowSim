@@ -7,27 +7,32 @@ layout(binding = 1) uniform sampler2D u_Density;
 
 layout(location = 0) out vec4 outColor;
 
+vec3 cosinePalette(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
+    return a + b * cos(6.28318530718 * (c * t + d));
+}
+
 void main() {
     vec2 vel = texture(u_Velocity, fragUV).xy;
     float den = texture(u_Density, fragUV).x;
-    
-    float speed = length(vel);
-
-    vec3 bgDark      = vec3(0.0,0.0,0.0); 
-    vec3 neonCyan    = vec3(0.490, 0.812, 1.000);
-    vec3 neonPurple  = vec3(0.733, 0.604, 0.969);
-    vec3 neonPink    = vec3(0.969, 0.463, 0.557);
-
-    vec3 fluidColor = mix(bgDark, neonCyan, clamp(den, 0.0, 1.0));
-    fluidColor = mix(fluidColor, neonPurple, clamp(den - 1.0, 0.0, 1.0));
-
-    float speedFactor = smoothstep(0.0, 30.0, speed); 
-    vec3 finalColor = mix(fluidColor, neonPink, speedFactor);
 
     float angle = atan(vel.y, vel.x);
-    vec3 directionalTint = vec3(cos(angle), sin(angle), -cos(angle));
+    float normalizedAngle = (angle + 3.14159265359) / (2.0 * 3.14159265359);
+
+    vec3 a = vec3(0.5, 0.5, 0.5);       
+    vec3 b = vec3(0.5, 0.5, 0.5);       
+    vec3 c = vec3(1.0, 1.0, 1.0);       
+    vec3 d = vec3(0.00, 0.33, 0.67);    
     
-    finalColor += 0.15 * directionalTint * speedFactor;
+    vec3 baseColor = cosinePalette(normalizedAngle, a, b, c, d);
+
+    float mask = smoothstep(0.0, 2.0, den); 
+    
+    float speed = length(vel);
+    float dynamicBrightness = 0.5 + (0.5 * smoothstep(0.0, 15.0, speed));
+    
+    vec3 finalColor = baseColor * mask * dynamicBrightness;
+
+    finalColor = pow(finalColor, vec3(1.2)); 
 
     outColor = vec4(finalColor, 1.0);
 }

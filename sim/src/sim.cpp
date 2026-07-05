@@ -369,11 +369,11 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
         float dy = static_cast<float>(ypos - lastY);
 
         pushData.point = glm::vec2(mouseX, mouseY);
-        pushData.radius = 0.001f;
+        pushData.radius = 0.0007f;
 
         m_splatPipeline->bind(cmd);
 
-        pushData.color = glm::vec3(dx * 1.0f, dy * 1.0f, 0.0f);
+        pushData.color = glm::vec3(dx * 1.5f, dy * 1.5f, 0.0f);
         cmd.pushConstants<SimComputePushConstant>(
             *m_computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0,
             pushData);
@@ -384,7 +384,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
 
         insertComputeBarrier(cmd, m_velocityTex[m_readIndex]->getImage());
 
-        pushData.color = glm::vec3(0.1f);
+        pushData.color = glm::vec3(0.5f);
         cmd.pushConstants<SimComputePushConstant>(
             *m_computePipelineLayout, vk::ShaderStageFlagBits::eCompute, 0,
             pushData);
@@ -400,7 +400,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
     lastY = ypos;
 
     m_advectPipeline->bind(cmd);
-    pushData.dissipation = 0.9999f;
+    pushData.dissipation = 0.99f;
     cmd.pushConstants<SimComputePushConstant>(*m_computePipelineLayout,
                                               vk::ShaderStageFlagBits::eCompute,
                                               0, pushData);
@@ -411,7 +411,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
     cmd.dispatch(groupX, groupY, 1);
     insertComputeBarrier(cmd, m_velocityTex[m_writeIndex]->getImage());
 
-    pushData.dissipation = 0.999f;
+    pushData.dissipation = 0.99f;
     cmd.pushConstants<SimComputePushConstant>(*m_computePipelineLayout,
                                               vk::ShaderStageFlagBits::eCompute,
                                               0, pushData);
@@ -481,7 +481,7 @@ void Sim::onUpdate(float deltaTime) {
         close();
     }
 
-    float frameTimeMs = deltaTime * 1000.0f;
+    float frameTimeMs = deltaTime * 800.0f;
 
     m_frameTimes[m_frameTimeIndex] = frameTimeMs;
     m_frameTimeIndex = (m_frameTimeIndex + 1) % FRAME_HISTORY_COUNT;
@@ -534,7 +534,7 @@ void Sim::onRender(Ghost::FrameInfo &frameInfo) {
     std::vector<Ghost::GhostRenderObject> renderObjects = {renderObj};
     m_forwardRenderer->renderScene(frameInfo.commandBuffer, renderObjects);
 
-	m_imguiLayer->render(frameInfo.commandBuffer);
+//	m_imguiLayer->render(frameInfo.commandBuffer);
 }
 
 void Sim::onShutdown() { m_forwardRenderer->getDevice()->waitIdle(); }
