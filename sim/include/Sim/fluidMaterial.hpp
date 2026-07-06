@@ -22,8 +22,12 @@ class FluidMaterial : public Ghost::Material {
     void updateShaderResources(const vk::raii::CommandBuffer &cmd,
                                const Ghost::GhostRenderObject &obj) override;
 
-    void setTextures(std::shared_ptr<Ghost::StorageTexture> velocityTex,
-                     std::shared_ptr<Ghost::StorageTexture> densityTex);
+    void setTextures(std::shared_ptr<Ghost::StorageTexture> vel0,
+                     std::shared_ptr<Ghost::StorageTexture> den0,
+                     std::shared_ptr<Ghost::StorageTexture> vel1,
+                     std::shared_ptr<Ghost::StorageTexture> den1);
+    
+    void setActiveIndex(uint32_t index) { m_activeIndex = index; }
 
   private:
     void flushDescriptorUpdates();
@@ -35,6 +39,8 @@ class FluidMaterial : public Ghost::Material {
     std::shared_ptr<Ghost::StorageTexture> m_velocityTexture;
     std::shared_ptr<Ghost::StorageTexture> m_densityTexture;
     std::vector<vk::raii::DescriptorSet> m_descriptorSets;
+
+	uint32_t m_activeIndex = 0;
 };
 
 } // namespace FluidSim

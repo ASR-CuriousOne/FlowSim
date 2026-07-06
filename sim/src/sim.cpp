@@ -112,6 +112,7 @@ void Sim::onInit() {
     createComputeResources();
     createPipeline();
     createMaterial();
+    updateComputeDescriptors();
 }
 
 void Sim::createPipeline() {
@@ -181,8 +182,8 @@ void Sim::createMaterial() {
         m_forwardRenderer->getDevice(), *m_descriptorManager,
         m_fluidGraphicsPipeline, 2);
 
-    m_fluidMaterial->setTextures(m_velocityTex[m_readIndex],
-                                 m_densityTex[m_readIndex]);
+    m_fluidMaterial->setTextures(m_velocityTex[0], m_densityTex[0],
+                                 m_velocityTex[1], m_densityTex[1]);
 }
 
 void Sim::createComputeResources() {
@@ -265,89 +266,78 @@ void Sim::createComputePipeline() {
     m_splatPipeline = std::make_shared<Ghost::GhostComputePipeline>(
         m_forwardRenderer->getDevice(), splatCode, *m_computePipelineLayout);
 
-    m_computeDescriptorSets =
+    m_computeDescriptorSets[0] =
+        m_descriptorManager->allocateSets("FluidComputeLayout", 8);
+    m_computeDescriptorSets[1] =
         m_descriptorManager->allocateSets("FluidComputeLayout", 8);
 }
 
 void Sim::updateComputeDescriptors() {
     auto &layout = m_descriptorManager->getLayout("FluidComputeLayout");
 
-    vk::DescriptorImageInfo velRead =
-        m_velocityTex[m_readIndex]->descriptorInfo();
-    vk::DescriptorImageInfo velWrite =
-        m_velocityTex[m_writeIndex]->descriptorInfo();
-    vk::DescriptorImageInfo denRead =
-        m_densityTex[m_readIndex]->descriptorInfo();
-    vk::DescriptorImageInfo denWrite =
-        m_densityTex[m_writeIndex]->descriptorInfo();
-    vk::DescriptorImageInfo div = m_divergenceTex->descriptorInfo();
-    vk::DescriptorImageInfo p0 = m_pressureTex[0]->descriptorInfo();
-    vk::DescriptorImageInfo p1 = m_pressureTex[1]->descriptorInfo();
+    for (int i = 0; i < 2; i++) {
+        int r = i;
+        int w = (i + 1) % 2;
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &velRead)
-        .writeImage(1, &velRead)
-        .writeImage(2, &velWrite)
-        .writeImage(3, &velWrite)
-        .build(m_computeDescriptorSets[0], m_forwardRenderer->getDevice());
+        vk::DescriptorImageInfo velRead = m_velocityTex[r]->descriptorInfo();
+        vk::DescriptorImageInfo velWrite = m_velocityTex[w]->descriptorInfo();
+        vk::DescriptorImageInfo denRead = m_densityTex[r]->descriptorInfo();
+        vk::DescriptorImageInfo denWrite = m_densityTex[w]->descriptorInfo();
+        vk::DescriptorImageInfo div = m_divergenceTex->descriptorInfo();
+        vk::DescriptorImageInfo p0 = m_pressureTex[0]->descriptorInfo();
+        vk::DescriptorImageInfo p1 = m_pressureTex[1]->descriptorInfo();
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &velWrite)
-        .writeImage(1, &denRead)
-        .writeImage(2, &denWrite)
-        .writeImage(3, &denWrite)
-        .build(m_computeDescriptorSets[1], m_forwardRenderer->getDevice());
+        // Set 0: Advect Vel
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &velRead).writeImage(1, &velRead)
+            .writeImage(2, &velWrite).writeImage(3, &velWrite)
+            .build(m_computeDescriptorSets[i][0], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &velWrite)
-        .writeImage(1, &div)
-        .writeImage(2, &div)
-        .writeImage(3, &div)
-        .build(m_computeDescriptorSets[2], m_forwardRenderer->getDevice());
+        // Set 1: Advect Den
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &velWrite).writeImage(1, &denRead)
+            .writeImage(2, &denWrite).writeImage(3, &denWrite)
+            .build(m_computeDescriptorSets[i][1], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &p0)
-        .writeImage(1, &div)
-        .writeImage(2, &p1)
-        .writeImage(3, &p1)
-        .build(m_computeDescriptorSets[3], m_forwardRenderer->getDevice());
+        // Set 2: Divergence
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &velWrite).writeImage(1, &div)
+            .writeImage(2, &div).writeImage(3, &div)
+            .build(m_computeDescriptorSets[i][2], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &p1)
-        .writeImage(1, &div)
-        .writeImage(2, &p0)
-        .writeImage(3, &p0)
-        .build(m_computeDescriptorSets[4], m_forwardRenderer->getDevice());
+        // Set 3: Jacobi Even
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &p0).writeImage(1, &div)
+            .writeImage(2, &p1).writeImage(3, &p1)
+            .build(m_computeDescriptorSets[i][3], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &velWrite)
-        .writeImage(1, &p0)
-        .writeImage(2, &velWrite)
-        .writeImage(3, &velWrite)
-        .build(m_computeDescriptorSets[5], m_forwardRenderer->getDevice());
+        // Set 4: Jacobi Odd
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &p1).writeImage(1, &div)
+            .writeImage(2, &p0).writeImage(3, &p0)
+            .build(m_computeDescriptorSets[i][4], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &velRead)
-        .writeImage(1, &velRead)
-        .writeImage(2, &velRead)
-        .writeImage(3, &velRead)
-        .build(m_computeDescriptorSets[6], m_forwardRenderer->getDevice());
+        // Set 5: Project
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &velWrite).writeImage(1, &p0)
+            .writeImage(2, &velWrite).writeImage(3, &velWrite)
+            .build(m_computeDescriptorSets[i][5], m_forwardRenderer->getDevice());
 
-    Ghost::GhostDescriptorWriter(layout)
-        .writeImage(0, &denRead)
-        .writeImage(1, &denRead)
-        .writeImage(2, &denRead)
-        .writeImage(3, &denRead)
-        .build(m_computeDescriptorSets[7], m_forwardRenderer->getDevice());
+        // Set 6: Splat Vel
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &velRead).writeImage(1, &velRead)
+            .writeImage(2, &velRead).writeImage(3, &velRead)
+            .build(m_computeDescriptorSets[i][6], m_forwardRenderer->getDevice());
 
-    m_fluidMaterial->setTextures(m_velocityTex[m_readIndex],
-                                 m_densityTex[m_readIndex]);
+        // Set 7: Splat Den
+        Ghost::GhostDescriptorWriter(layout)
+            .writeImage(0, &denRead).writeImage(1, &denRead)
+            .writeImage(2, &denRead).writeImage(3, &denRead)
+            .build(m_computeDescriptorSets[i][7], m_forwardRenderer->getDevice());
+    }
 }
 
 void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
-    m_forwardRenderer->getDevice()->waitIdle();
-
-    updateComputeDescriptors();
 
     uint32_t groupX = (m_window.WIDTH + 15) / 16;
     uint32_t groupY = (m_window.HEIGHT + 15) / 16;
@@ -379,7 +369,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
             pushData);
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                                *m_computePipelineLayout, 0,
-                               {*m_computeDescriptorSets[6]}, nullptr);
+                               {*m_computeDescriptorSets[m_readIndex][6]}, nullptr);
         cmd.dispatch(groupX, groupY, 1);
 
         insertComputeBarrier(cmd, m_velocityTex[m_readIndex]->getImage());
@@ -390,7 +380,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
             pushData);
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                                *m_computePipelineLayout, 0,
-                               {*m_computeDescriptorSets[7]}, nullptr);
+                               {*m_computeDescriptorSets[m_readIndex][7]}, nullptr);
         cmd.dispatch(groupX, groupY, 1);
 
         insertComputeBarrier(cmd, m_densityTex[m_readIndex]->getImage());
@@ -407,7 +397,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
 
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                            *m_computePipelineLayout, 0,
-                           {*m_computeDescriptorSets[0]}, nullptr);
+                           {*m_computeDescriptorSets[m_readIndex][0]}, nullptr);
     cmd.dispatch(groupX, groupY, 1);
     insertComputeBarrier(cmd, m_velocityTex[m_writeIndex]->getImage());
 
@@ -417,14 +407,14 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
                                               0, pushData);
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                            *m_computePipelineLayout, 0,
-                           {*m_computeDescriptorSets[1]}, nullptr);
+                           {*m_computeDescriptorSets[m_readIndex][1]}, nullptr);
     cmd.dispatch(groupX, groupY, 1);
     insertComputeBarrier(cmd, m_densityTex[m_writeIndex]->getImage());
 
     m_divergencePipeline->bind(cmd);
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                            *m_computePipelineLayout, 0,
-                           {*m_computeDescriptorSets[2]}, nullptr);
+                           {*m_computeDescriptorSets[m_readIndex][2]}, nullptr);
     cmd.dispatch(groupX, groupY, 1);
     insertComputeBarrier(cmd, m_divergenceTex->getImage());
 
@@ -439,7 +429,7 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
         int setIdx = (i % 2 == 0) ? 3 : 4;
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                                *m_computePipelineLayout, 0,
-                               {*m_computeDescriptorSets[setIdx]}, nullptr);
+                               {*m_computeDescriptorSets[m_readIndex][setIdx]}, nullptr);
         cmd.dispatch(groupX, groupY, 1);
         insertComputeBarrier(cmd, m_pressureTex[(i + 1) % 2]->getImage());
     }
@@ -447,11 +437,16 @@ void Sim::dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime) {
     m_projectPipeline->bind(cmd);
     cmd.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
                            *m_computePipelineLayout, 0,
-                           {*m_computeDescriptorSets[5]}, nullptr);
+                           {*m_computeDescriptorSets[m_readIndex][5]}, nullptr);
     cmd.dispatch(groupX, groupY, 1);
     insertComputeBarrier(cmd, m_velocityTex[m_writeIndex]->getImage());
 
     std::swap(m_readIndex, m_writeIndex);
+
+    m_fluidMaterial->setActiveIndex(m_readIndex);
+
+    insertComputeToGraphicsBarrier(cmd, m_velocityTex[m_readIndex]->getImage());
+    insertComputeToGraphicsBarrier(cmd, m_densityTex[m_readIndex]->getImage());
 }
 
 void Sim::insertComputeBarrier(const vk::raii::CommandBuffer &cmd,
@@ -471,8 +466,29 @@ void Sim::insertComputeBarrier(const vk::raii::CommandBuffer &cmd,
     barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
     cmd.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                        vk::PipelineStageFlagBits::eComputeShader |
-                            vk::PipelineStageFlagBits::eFragmentShader,
+                        vk::PipelineStageFlagBits::eComputeShader,
+                        vk::DependencyFlags(), nullptr, nullptr, barrier);
+}
+
+void Sim::insertComputeToGraphicsBarrier(const vk::raii::CommandBuffer &cmd,
+                                         const vk::raii::Image &image) {
+    vk::ImageMemoryBarrier barrier{};
+    barrier.oldLayout = vk::ImageLayout::eGeneral;
+    barrier.newLayout = vk::ImageLayout::eGeneral;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.setImage(*image);
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite;
+    barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+    cmd.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                        vk::PipelineStageFlagBits::eFragmentShader,
                         vk::DependencyFlags(), nullptr, nullptr, barrier);
 }
 
@@ -481,7 +497,7 @@ void Sim::onUpdate(float deltaTime) {
         close();
     }
 
-    float frameTimeMs = deltaTime * 800.0f;
+    float frameTimeMs = deltaTime * 1000.0f;
 
     m_frameTimes[m_frameTimeIndex] = frameTimeMs;
     m_frameTimeIndex = (m_frameTimeIndex + 1) % FRAME_HISTORY_COUNT;
@@ -534,7 +550,7 @@ void Sim::onRender(Ghost::FrameInfo &frameInfo) {
     std::vector<Ghost::GhostRenderObject> renderObjects = {renderObj};
     m_forwardRenderer->renderScene(frameInfo.commandBuffer, renderObjects);
 
-//	m_imguiLayer->render(frameInfo.commandBuffer);
+    m_imguiLayer->render(frameInfo.commandBuffer);
 }
 
 void Sim::onShutdown() { m_forwardRenderer->getDevice()->waitIdle(); }

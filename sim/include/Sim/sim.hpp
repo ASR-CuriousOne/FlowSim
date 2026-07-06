@@ -38,6 +38,8 @@ class Sim {
     void dispatchCompute(const vk::raii::CommandBuffer &cmd, float deltaTime);
     void insertComputeBarrier(const vk::raii::CommandBuffer &cmd,
                               const vk::raii::Image &image);
+	void insertComputeToGraphicsBarrier(const vk::raii::CommandBuffer &cmd,
+                              const vk::raii::Image &image);
 
     WindowGLFW m_window;
     std::unique_ptr<Ghost::ForwardRenderer> m_forwardRenderer;
@@ -57,7 +59,7 @@ class Sim {
     std::shared_ptr<Ghost::GhostComputePipeline> m_projectPipeline;
     std::shared_ptr<Ghost::GhostComputePipeline> m_splatPipeline;
 
-    std::vector<vk::raii::DescriptorSet> m_computeDescriptorSets;
+    std::vector<vk::raii::DescriptorSet> m_computeDescriptorSets[2];
 
     std::shared_ptr<Ghost::Mesh> m_quad;
     vk::raii::PipelineLayout m_fluidGraphicsPipelineLayout = nullptr;
