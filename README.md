@@ -4,7 +4,11 @@
 
 [Old Sim](https://github.com/CSESA-IITI/Fluid-Simulation)
 
-<video src="https://github.com/user-attachments/assets/ce8d2625-f4b1-483f-a8c5-e59f84d0b8c3" width="100%" controls autoplay muted loop></video>
+<div align=center>
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/8a033a41-b612-4180-8ad4-f4b5224d1be9" width="600" controls autoplay muted loop></video>
+</div>
 
 <img src="readmeStuff/simWithoutFPS.png" alt="Sim" width="900">
 
