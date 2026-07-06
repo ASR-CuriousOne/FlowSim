@@ -7,7 +7,7 @@
 <div align=center>
 
 <div align="center">
-  <video src="https://github.com/user-attachments/assets/8a033a41-b612-4180-8ad4-f4b5224d1be9" width="600" controls autoplay muted loop></video>
+  <video src="https://github.com/user-attachments/assets/f654027c-b87e-437a-87b1-561130ade7aa" width="600" controls autoplay muted loop></video>
 </div>
 
 <img src="readmeStuff/simWithoutFPS.png" alt="Sim" width="900">
